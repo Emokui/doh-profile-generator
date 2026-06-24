@@ -71,11 +71,57 @@
     return `${cleaned || "doh-domain-routing"}.mobileconfig`;
   }
 
-  function buildProfile(dohUrl, profileName) {
+  function normalizeDomains(rawValue) {
+    const inputDomains = Array.isArray(rawValue)
+      ? rawValue
+      : String(rawValue).split(/\r?\n|,/);
+    const domains = [];
+    const seen = new Set();
+
+    for (const rawDomain of inputDomains) {
+      const domain = String(rawDomain)
+        .trim()
+        .toLowerCase()
+        .replace(/\.$/, "");
+
+      if (!domain) {
+        continue;
+      }
+
+      if (
+        domain.length > 253 ||
+        domain.includes("://") ||
+        domain.includes("/") ||
+        domain.includes("*") ||
+        !domain.includes(".") ||
+        !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(domain)
+      ) {
+        throw new Error(`域名格式无效：${rawDomain}`);
+      }
+
+      if (!seen.has(domain)) {
+        seen.add(domain);
+        domains.push(domain);
+      }
+    }
+
+    if (domains.length === 0) {
+      throw new Error("请至少填写一个分流域名。");
+    }
+
+    if (domains.length > 200) {
+      throw new Error("分流域名最多支持 200 个。");
+    }
+
+    return domains;
+  }
+
+  function buildProfile(dohUrl, profileName, rawDomains = DOMAINS) {
+    const domains = normalizeDomains(rawDomains);
     const profileUuid = createUuid();
     const dnsUuid = createUuid();
     const identifierSuffix = profileUuid.toLowerCase();
-    const domainXml = DOMAINS
+    const domainXml = domains
       .map((domain) => `                    <string>${escapeXml(domain)}</string>`)
       .join("\n");
 
@@ -146,6 +192,7 @@ ${domainXml}
   globalObject.ProfileGenerator = Object.freeze({
     DOMAINS,
     buildProfile,
+    normalizeDomains,
     normalizeDohUrl,
     safeFilename,
   });
