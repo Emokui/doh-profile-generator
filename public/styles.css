@@ -40,7 +40,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -165,9 +166,9 @@ label {
   font-weight: 700;
 }
 
-input {
+input,
+textarea {
   width: 100%;
-  min-height: 52px;
   padding: 13px 15px;
   border: 1px solid #d9dde4;
   border-radius: 13px;
@@ -178,12 +179,26 @@ input {
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
-input:focus {
+input {
+  min-height: 52px;
+}
+
+textarea {
+  min-height: 210px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+input:focus,
+textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(22, 100, 255, 0.12);
 }
 
-input[aria-invalid="true"] {
+input[aria-invalid="true"],
+textarea[aria-invalid="true"] {
   border-color: var(--danger);
 }
 
@@ -228,67 +243,30 @@ input[aria-invalid="true"] {
   font-weight: 600;
 }
 
-.domain-panel {
-  margin: 6px 0 22px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fafbfc;
-  overflow: hidden;
+.domain-editor {
+  margin-top: 4px;
 }
 
-.domain-panel summary {
+.domain-editor-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 15px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  list-style: none;
+  margin-bottom: 9px;
 }
 
-.domain-panel summary::-webkit-details-marker {
-  display: none;
-}
-
-.domain-panel summary::after {
-  content: "+";
-  margin-left: auto;
-  color: var(--accent);
-  font-size: 21px;
-  font-weight: 400;
-}
-
-.domain-panel[open] summary::after {
-  content: "−";
-}
-
-.summary-hint {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.domain-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+.domain-editor-heading label {
   margin: 0;
-  padding: 0 15px 16px;
-  list-style: none;
 }
 
-.domain-list li {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid #e5e7eb;
-  border-radius: 9px;
-  background: white;
-  color: #475467;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  overflow-wrap: anywhere;
+.text-button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .primary-button {
@@ -441,12 +419,8 @@ footer p {
     margin-bottom: 22px;
   }
 
-  .domain-list {
-    grid-template-columns: 1fr;
-  }
-
-  .summary-hint {
-    display: none;
+  textarea {
+    min-height: 230px;
   }
 }
 
