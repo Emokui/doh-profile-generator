@@ -2,19 +2,11 @@
 
 (function attachProfileGenerator(globalObject) {
   const DOMAINS = Object.freeze([
+    "ocsp.apple.com",
+    "ocsp2.apple.com",
     "certs.apple.com",
     "crl.apple.com",
-    "crl.entrust.net",
-    "crl3.digicert.com",
-    "crl4.digicert.com",
-    "ocsp.apple.com",
-    "ocsp.digicert.cn",
-    "ocsp.digicert.com",
-    "ocsp.entrust.net",
-    "ocsp2.apple.com",
     "valid.apple.com",
-    "ppq.apple.com",
-    "ppq-ext.v.aaplimg.com",
     "appattest.apple.com",
     "vpp.itunes.apple.com",
   ]);
