@@ -1,125 +1,199 @@
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f7f8fa">
-  <meta name="description" content="在浏览器本地生成 Apple DNS over HTTPS 描述文件。">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231664ff'/%3E%3Cpath d='M18 32h28M32 18v28' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
-  <title>DoH 描述文件生成器</title>
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <main class="page-shell">
-    <section class="hero" aria-labelledby="page-title">
-      <div class="eyebrow">Apple DNS Settings</div>
-      <h1 id="page-title">DoH 描述文件生成器</h1>
-      <p class="hero-copy">
-        输入你的 DNS over HTTPS 地址，生成仅对指定域名分流的
-        <code>.mobileconfig</code> 文件。
-      </p>
-      <div class="privacy-note">
-        <span class="privacy-dot" aria-hidden="true"></span>
-        全程在浏览器本地生成，不会上传 DoH 地址
-      </div>
-    </section>
+"use strict";
 
-    <section class="card form-card" aria-labelledby="generator-title">
-      <div class="section-heading">
-        <div>
-          <p class="step-label">配置</p>
-          <h2 id="generator-title">生成描述文件</h2>
-        </div>
-        <span class="domain-count" id="domain-count">15 个域名</span>
-      </div>
+(function attachProfileGenerator(globalObject) {
+  const DOMAINS = Object.freeze([
+    "ocsp.apple.com",
+    "ocsp2.apple.com",
+    "certs.apple.com",
+    "crl.apple.com",
+    "valid.apple.com",
+    "appattest.apple.com",
+    "vpp.itunes.apple.com",
+  ]);
 
-      <form id="profile-form" novalidate>
-        <label for="doh-url">DoH 地址</label>
-        <div class="field-wrap">
-          <input
-            id="doh-url"
-            name="dohUrl"
-            type="url"
-            inputmode="url"
-            autocomplete="url"
-            autocapitalize="none"
-            spellcheck="false"
-            placeholder="https://example.cloudflare-gateway.com/dns-query"
-            required
-            aria-describedby="doh-help doh-error"
-          >
-          <button class="clear-button" type="button" id="clear-url" aria-label="清空 DoH 地址" hidden>×</button>
-        </div>
-        <p class="field-help" id="doh-help">必须使用 HTTPS，例如 Cloudflare Gateway 的 <code>/dns-query</code> 地址。</p>
-        <p class="field-error" id="doh-error" role="alert"></p>
+  function escapeXml(value) {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&apos;");
+  }
 
-        <label for="profile-name">描述文件名称</label>
-        <input
-          id="profile-name"
-          name="profileName"
-          type="text"
-          maxlength="50"
-          value="Cloudflare DoH 域名分流"
-          required
-          aria-describedby="name-error"
-        >
-        <p class="field-error" id="name-error" role="alert"></p>
+  function createUuid() {
+    if (typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID().toUpperCase();
+    }
 
-        <div class="domain-editor">
-          <div class="domain-editor-heading">
-            <label for="domain-input">分流域名</label>
-            <button class="text-button" type="button" id="restore-domains">恢复默认</button>
-          </div>
-          <textarea
-            id="domain-input"
-            name="domains"
-            rows="9"
-            autocapitalize="none"
-            autocomplete="off"
-            spellcheck="false"
-            required
-            aria-describedby="domain-help domain-error"
-          ></textarea>
-          <p class="field-help" id="domain-help">默认域名可以删除或替换。每行填写一个域名；会自动转为小写、移除末尾的点并去重。填写根域名时，Apple DNS 分流也会匹配其子域名。</p>
-          <p class="field-error" id="domain-error" role="alert"></p>
-        </div>
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    return [
+      hex.slice(0, 8),
+      hex.slice(8, 12),
+      hex.slice(12, 16),
+      hex.slice(16, 20),
+      hex.slice(20),
+    ].join("-").toUpperCase();
+  }
 
-        <button class="primary-button" type="submit">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4h14v-4"/>
-          </svg>
-          生成并下载
-        </button>
-      </form>
+  function normalizeDohUrl(rawValue) {
+    const value = rawValue.trim();
+    let url;
 
-      <div class="success-panel" id="success-panel" role="status" aria-live="polite" hidden>
-        <div class="success-icon" aria-hidden="true">✓</div>
-        <div>
-          <strong>描述文件已生成</strong>
-          <p id="success-message"></p>
-        </div>
-      </div>
-    </section>
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error("请输入完整有效的 DoH 地址。");
+    }
 
-    <section class="card info-card" aria-labelledby="install-title">
-      <p class="step-label">安装</p>
-      <h2 id="install-title">在 iPhone 上使用</h2>
-      <ol class="steps">
-        <li><span>1</span><p>使用 Safari 下载生成的 <code>.mobileconfig</code>。</p></li>
-        <li><span>2</span><p>打开“设置”，点击“已下载描述文件”。</p></li>
-        <li><span>3</span><p>检查 DoH 地址和域名范围后完成安装。</p></li>
-      </ol>
-      <p class="warning">
-        自定义 DNS 会影响这些域名的解析结果。仅使用你本人控制并信任的 DoH 服务。
-      </p>
-    </section>
+    if (url.protocol !== "https:") {
+      throw new Error("DoH 地址必须使用 HTTPS。");
+    }
 
-    <footer>
-      <p>纯静态页面 · 无跟踪代码 · 无服务器存储</p>
-    </footer>
-  </main>
+    if (!url.hostname || url.username || url.password) {
+      throw new Error("DoH 地址格式无效。");
+    }
 
-  <script src="/profile.js" defer></script>
-  <script src="/app.js" defer></script>
-</body>
-</html>
+    url.hash = "";
+    return url.toString();
+  }
+
+  function safeFilename(value) {
+    const cleaned = value
+      .trim()
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    return `${cleaned || "doh-domain-routing"}.mobileconfig`;
+  }
+
+  function normalizeDomains(rawValue) {
+    const inputDomains = Array.isArray(rawValue)
+      ? rawValue
+      : String(rawValue).split(/\r?\n|,/);
+    const domains = [];
+    const seen = new Set();
+
+    for (const rawDomain of inputDomains) {
+      const domain = String(rawDomain)
+        .trim()
+        .toLowerCase()
+        .replace(/\.$/, "");
+
+      if (!domain) {
+        continue;
+      }
+
+      if (
+        domain.length > 253 ||
+        domain.includes("://") ||
+        domain.includes("/") ||
+        domain.includes("*") ||
+        !domain.includes(".") ||
+        !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(domain)
+      ) {
+        throw new Error(`域名格式无效：${rawDomain}`);
+      }
+
+      if (!seen.has(domain)) {
+        seen.add(domain);
+        domains.push(domain);
+      }
+    }
+
+    if (domains.length === 0) {
+      throw new Error("请至少填写一个分流域名。");
+    }
+
+    if (domains.length > 200) {
+      throw new Error("分流域名最多支持 200 个。");
+    }
+
+    return domains;
+  }
+
+  function buildProfile(dohUrl, profileName, rawDomains = DOMAINS) {
+    const domains = normalizeDomains(rawDomains);
+    const profileUuid = createUuid();
+    const dnsUuid = createUuid();
+    const identifierSuffix = profileUuid.toLowerCase();
+    const domainXml = domains
+      .map((domain) => `                    <string>${escapeXml(domain)}</string>`)
+      .join("\n");
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>DNSSettings</key>
+            <dict>
+                <key>DNSProtocol</key>
+                <string>HTTPS</string>
+                <key>ServerURL</key>
+                <string>${escapeXml(dohUrl)}</string>
+                <key>SupplementalMatchDomains</key>
+                <array>
+${domainXml}
+                </array>
+            </dict>
+            <key>OnDemandRules</key>
+            <array>
+                <dict>
+                    <key>Action</key>
+                    <string>Connect</string>
+                </dict>
+            </array>
+            <key>PayloadDescription</key>
+            <string>仅将指定验证域名发送至配置的 DNS over HTTPS 服务。</string>
+            <key>PayloadDisplayName</key>
+            <string>${escapeXml(profileName)}</string>
+            <key>PayloadIdentifier</key>
+            <string>com.local.doh-profile.${identifierSuffix}.dns</string>
+            <key>PayloadOrganization</key>
+            <string>Local DoH Profile Generator</string>
+            <key>PayloadType</key>
+            <string>com.apple.dnsSettings.managed</string>
+            <key>PayloadUUID</key>
+            <string>${dnsUuid}</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+    <key>PayloadDescription</key>
+    <string>仅将指定域名发送至 DoH，其他 DNS 查询继续使用系统 DNS。安装前请核对 DoH 地址。</string>
+    <key>PayloadDisplayName</key>
+    <string>${escapeXml(profileName)}</string>
+    <key>PayloadIdentifier</key>
+    <string>com.local.doh-profile.${identifierSuffix}</string>
+    <key>PayloadOrganization</key>
+    <string>Local DoH Profile Generator</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadScope</key>
+    <string>User</string>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>${profileUuid}</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>
+`;
+  }
+
+  globalObject.ProfileGenerator = Object.freeze({
+    DOMAINS,
+    buildProfile,
+    normalizeDomains,
+    normalizeDohUrl,
+    safeFilename,
+  });
+})(typeof window !== "undefined" ? window : globalThis);
