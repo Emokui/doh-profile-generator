@@ -3,6 +3,7 @@
 const {
   DOMAINS,
   buildProfile,
+  normalizeDomains,
   normalizeDohUrl,
   safeFilename,
 } = window.ProfileGenerator;
@@ -12,9 +13,11 @@ const dohInput = document.querySelector("#doh-url");
 const nameInput = document.querySelector("#profile-name");
 const dohError = document.querySelector("#doh-error");
 const nameError = document.querySelector("#name-error");
+const domainInput = document.querySelector("#domain-input");
+const domainError = document.querySelector("#domain-error");
 const clearButton = document.querySelector("#clear-url");
-const domainList = document.querySelector("#domain-list");
 const domainCount = document.querySelector("#domain-count");
+const restoreDomainsButton = document.querySelector("#restore-domains");
 const successPanel = document.querySelector("#success-panel");
 const successMessage = document.querySelector("#success-message");
 
@@ -45,17 +48,18 @@ function clearError(input, output) {
   output.textContent = "";
 }
 
-function renderDomains() {
-  domainCount.textContent = `${DOMAINS.length} 个域名`;
-  const fragment = document.createDocumentFragment();
+function renderDefaultDomains() {
+  domainInput.value = DOMAINS.join("\n");
+  updateDomainCount();
+}
 
-  for (const domain of DOMAINS) {
-    const item = document.createElement("li");
-    item.textContent = domain;
-    fragment.append(item);
-  }
-
-  domainList.replaceChildren(fragment);
+function updateDomainCount() {
+  const candidates = domainInput.value
+    .split(/\r?\n|,/)
+    .map((domain) => domain.trim().toLowerCase().replace(/\.$/, ""))
+    .filter(Boolean);
+  const uniqueCount = new Set(candidates).size;
+  domainCount.textContent = `${uniqueCount} 个域名`;
 }
 
 function updateClearButton() {
@@ -66,9 +70,11 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   clearError(dohInput, dohError);
   clearError(nameInput, nameError);
+  clearError(domainInput, domainError);
   successPanel.hidden = true;
 
   let dohUrl;
+  let domains;
   const profileName = nameInput.value.trim();
   let isValid = true;
 
@@ -84,16 +90,25 @@ form.addEventListener("submit", (event) => {
     isValid = false;
   }
 
+  try {
+    domains = normalizeDomains(domainInput.value);
+  } catch (error) {
+    showError(domainInput, domainError, error.message);
+    isValid = false;
+  }
+
   if (!isValid) {
     return;
   }
 
   dohInput.value = dohUrl;
+  domainInput.value = domains.join("\n");
+  updateDomainCount();
   const filename = safeFilename(profileName);
-  const profile = buildProfile(dohUrl, profileName);
+  const profile = buildProfile(dohUrl, profileName, domains);
   downloadProfile(profile, filename);
 
-  successMessage.textContent = `${filename} 已开始下载，包含 ${DOMAINS.length} 个分流域名。`;
+  successMessage.textContent = `${filename} 已开始下载，包含 ${domains.length} 个分流域名。`;
   successPanel.hidden = false;
 });
 
@@ -108,6 +123,19 @@ nameInput.addEventListener("input", () => {
   successPanel.hidden = true;
 });
 
+domainInput.addEventListener("input", () => {
+  updateDomainCount();
+  clearError(domainInput, domainError);
+  successPanel.hidden = true;
+});
+
+restoreDomainsButton.addEventListener("click", () => {
+  renderDefaultDomains();
+  clearError(domainInput, domainError);
+  successPanel.hidden = true;
+  domainInput.focus();
+});
+
 clearButton.addEventListener("click", () => {
   dohInput.value = "";
   updateClearButton();
@@ -115,5 +143,5 @@ clearButton.addEventListener("click", () => {
   dohInput.focus();
 });
 
-renderDomains();
+renderDefaultDomains();
 updateClearButton();
