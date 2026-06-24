@@ -65,13 +65,24 @@
         >
         <p class="field-error" id="name-error" role="alert"></p>
 
-        <details class="domain-panel">
-          <summary>
-            <span>查看分流域名</span>
-            <span class="summary-hint">安装后不可修改</span>
-          </summary>
-          <ul id="domain-list" class="domain-list"></ul>
-        </details>
+        <div class="domain-editor">
+          <div class="domain-editor-heading">
+            <label for="domain-input">分流域名</label>
+            <button class="text-button" type="button" id="restore-domains">恢复默认</button>
+          </div>
+          <textarea
+            id="domain-input"
+            name="domains"
+            rows="9"
+            autocapitalize="none"
+            autocomplete="off"
+            spellcheck="false"
+            required
+            aria-describedby="domain-help domain-error"
+          ></textarea>
+          <p class="field-help" id="domain-help">默认域名可以删除或替换。每行填写一个域名；会自动转为小写、移除末尾的点并去重。填写根域名时，Apple DNS 分流也会匹配其子域名。</p>
+          <p class="field-error" id="domain-error" role="alert"></p>
+        </div>
 
         <button class="primary-button" type="submit">
           <svg viewBox="0 0 24 24" aria-hidden="true">
