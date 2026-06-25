@@ -24,13 +24,13 @@
       </div>
     </section>
 
-    <section class="card form-card" aria-labelledby="generator-title">
+    <section class="card" aria-labelledby="generator-title">
       <div class="section-heading">
         <div>
           <p class="step-label">配置</p>
           <h2 id="generator-title">生成描述文件</h2>
         </div>
-        <span class="domain-count" id="domain-count">15 个域名</span>
+        <span class="domain-count" id="domain-count">2 个域名</span>
       </div>
 
       <form id="profile-form" novalidate>
@@ -80,7 +80,7 @@
             required
             aria-describedby="domain-help domain-error"
           ></textarea>
-          <p class="field-help" id="domain-help">默认域名可以删除或替换。每行填写一个域名；会自动转为小写、移除末尾的点并去重。填写根域名时，Apple DNS 分流也会匹配其子域名。</p>
+          <p class="field-help" id="domain-help">每行一个域名，可删除或替换默认值。</p>
           <p class="field-error" id="domain-error" role="alert"></p>
         </div>
 
@@ -110,7 +110,7 @@
         <li><span>3</span><p>检查 DoH 地址和域名范围后完成安装。</p></li>
       </ol>
       <p class="warning">
-        自定义 DNS 会影响这些域名的解析结果。仅使用你本人控制并信任的 DoH 服务。
+        描述文件不能进行精确主机匹配。若只需处理输入的主机名，请在 DoH 服务端使用精确 Host 规则。
       </p>
     </section>
 
