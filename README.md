@@ -58,6 +58,7 @@ doh-profile-generator/
 - 每次生成新的 Payload UUID。
 - 用户可逐行输入、删除或添加分流域名。
 - 域名会自动转为小写、去重并检查格式，最多支持 200 个。
-- 仅将用户填写的域名路由到 DoH。
+- Apple 的 `SupplementalMatchDomains` 使用后缀匹配，输入域名及其子域名都会路由到 DoH，无法在描述文件中关闭。
+- 如需只处理精确主机名，应在 DoH 服务端使用精确 Host 规则。
 - 其他 DNS 查询继续使用设备的系统 DNS。
 - 生成文件未签名，iOS 安装时会显示“未签名”。
