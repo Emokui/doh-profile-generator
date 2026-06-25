@@ -1,7 +1,7 @@
 "use strict";
 
 const {
-  DOMAINS,
+  DEFAULT_DOMAINS,
   buildProfile,
   normalizeDomains,
   normalizeDohUrl,
@@ -49,13 +49,13 @@ function clearError(input, output) {
 }
 
 function renderDefaultDomains() {
-  domainInput.value = DOMAINS.join("\n");
+  domainInput.value = DEFAULT_DOMAINS.join("\n");
   updateDomainCount();
 }
 
 function updateDomainCount() {
   const candidates = domainInput.value
-    .split(/\r?\n|,/)
+    .split(/\r?\n/)
     .map((domain) => domain.trim().toLowerCase().replace(/\.$/, ""))
     .filter(Boolean);
   const uniqueCount = new Set(candidates).size;
