@@ -142,6 +142,8 @@ ${domainXml}
             <string>${escapeXml(profileName)}</string>
             <key>PayloadIdentifier</key>
             <string>com.local.doh-profile.${identifierSuffix}.dns</string>
+            <key>PayloadOrganization</key>
+            <string>Cloudflare</string>
             <key>PayloadType</key>
             <string>com.apple.dnsSettings.managed</string>
             <key>PayloadUUID</key>
@@ -154,6 +156,8 @@ ${domainXml}
     <string>${escapeXml(profileName)}</string>
     <key>PayloadIdentifier</key>
     <string>com.local.doh-profile.${identifierSuffix}</string>
+    <key>PayloadOrganization</key>
+    <string>Cloudflare</string>
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
