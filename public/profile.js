@@ -1,14 +1,9 @@
 "use strict";
 
 (function attachProfileGenerator(globalObject) {
-  const DOMAINS = Object.freeze([
+  const DEFAULT_DOMAINS = Object.freeze([
     "ocsp.apple.com",
     "ocsp2.apple.com",
-    "certs.apple.com",
-    "crl.apple.com",
-    "valid.apple.com",
-    "appattest.apple.com",
-    "vpp.itunes.apple.com",
   ]);
 
   function escapeXml(value) {
@@ -74,7 +69,7 @@
   function normalizeDomains(rawValue) {
     const inputDomains = Array.isArray(rawValue)
       ? rawValue
-      : String(rawValue).split(/\r?\n|,/);
+      : String(rawValue).split(/\r?\n/);
     const domains = [];
     const seen = new Set();
 
@@ -116,7 +111,7 @@
     return domains;
   }
 
-  function buildProfile(dohUrl, profileName, rawDomains = DOMAINS) {
+  function buildProfile(dohUrl, profileName, rawDomains = DEFAULT_DOMAINS) {
     const domains = normalizeDomains(rawDomains);
     const profileUuid = createUuid();
     const dnsUuid = createUuid();
@@ -143,21 +138,10 @@
 ${domainXml}
                 </array>
             </dict>
-            <key>OnDemandRules</key>
-            <array>
-                <dict>
-                    <key>Action</key>
-                    <string>Connect</string>
-                </dict>
-            </array>
-            <key>PayloadDescription</key>
-            <string>仅将指定验证域名发送至配置的 DNS over HTTPS 服务。</string>
             <key>PayloadDisplayName</key>
             <string>${escapeXml(profileName)}</string>
             <key>PayloadIdentifier</key>
             <string>com.local.doh-profile.${identifierSuffix}.dns</string>
-            <key>PayloadOrganization</key>
-            <string>Local DoH Profile Generator</string>
             <key>PayloadType</key>
             <string>com.apple.dnsSettings.managed</string>
             <key>PayloadUUID</key>
@@ -166,18 +150,10 @@ ${domainXml}
             <integer>1</integer>
         </dict>
     </array>
-    <key>PayloadDescription</key>
-    <string>仅将指定域名发送至 DoH，其他 DNS 查询继续使用系统 DNS。安装前请核对 DoH 地址。</string>
     <key>PayloadDisplayName</key>
     <string>${escapeXml(profileName)}</string>
     <key>PayloadIdentifier</key>
     <string>com.local.doh-profile.${identifierSuffix}</string>
-    <key>PayloadOrganization</key>
-    <string>Local DoH Profile Generator</string>
-    <key>PayloadRemovalDisallowed</key>
-    <false/>
-    <key>PayloadScope</key>
-    <string>User</string>
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
@@ -190,7 +166,7 @@ ${domainXml}
   }
 
   globalObject.ProfileGenerator = Object.freeze({
-    DOMAINS,
+    DEFAULT_DOMAINS,
     buildProfile,
     normalizeDomains,
     normalizeDohUrl,
