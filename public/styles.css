@@ -268,6 +268,43 @@ textarea[aria-invalid="true"] {
   font-weight: 700;
 }
 
+.mode-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 2px 0 18px;
+}
+
+.mode-summary > div {
+  padding: 13px 14px;
+  border: 1px solid #e2e7ee;
+  border-radius: 13px;
+  background: #f9fafb;
+}
+
+.mode-summary strong,
+.mode-summary span {
+  display: block;
+}
+
+.mode-summary strong {
+  margin-bottom: 3px;
+  font-size: 14px;
+}
+
+.mode-summary span {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mode-summary p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .primary-button {
   display: inline-flex;
   align-items: center;
@@ -420,6 +457,10 @@ footer p {
 
   textarea {
     min-height: 230px;
+  }
+
+  .mode-summary {
+    grid-template-columns: 1fr;
   }
 }
 
