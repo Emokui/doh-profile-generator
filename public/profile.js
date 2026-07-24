@@ -4,18 +4,34 @@
   const DEFAULT_DOMAINS = Object.freeze([
     "ocsp.apple.com",
     "ocsp2.apple.com",
-    "mesu.apple.com",
     "valid.apple.com",
     "crl.apple.com",
     "certs.apple.com",
     "appattest.apple.com",
     "vpp.itunes.apple.com",
-    "guzzoni-apple-com.v.aaplimg.com",
-    "gdmf.apple.com",
-    "axm-app.apple.com",
-    "comm-cohort.ess.apple.com",
-    "comm-main.ess.apple.com",
+    "ocsp2-lb.apple.com",
+    "ocsp2.g.aaplimg.com",
+    "crl3.digicert.com",
+    "crl4.digicert.com",
+    "ocsp.digicert.cn",
+    "ocsp.digicert.com",
+    "ocsp2-lb.apple.com.akadns.net",
+    "crl5.digicert.com",
+    "crl2.digicert.com",
+    "crl.digicert.com",
+    "crl2.apple.com",
+    "crl3.apple.com",
+    "ppq.apple.com",
+    "mesu.apple.com",
   ]);
+  const INSTALL_ONLY_EXCLUDED_DOMAINS = Object.freeze([
+    "certs.apple.com",
+    "ppq.apple.com",
+  ]);
+  const NORMAL_BYPASS_DOMAINS = Object.freeze([
+    "register.appattest.apple.com",
+  ]);
+  const DEFAULT_ORGANIZATION = "CloudFlare";
 
   function escapeXml(value) {
     return value
@@ -122,14 +138,73 @@
     return domains;
   }
 
-  function buildProfile(dohUrl, profileName, rawDomains = DEFAULT_DOMAINS) {
+  function buildProfile(
+    dohUrl,
+    profileName,
+    rawDomains = DEFAULT_DOMAINS,
+    organization = DEFAULT_ORGANIZATION,
+  ) {
     const domains = normalizeDomains(rawDomains);
+    const installDomains = domains.filter(
+      (domain) => !INSTALL_ONLY_EXCLUDED_DOMAINS.includes(domain),
+    );
+    const normalBypassDomains = NORMAL_BYPASS_DOMAINS.filter((bypassDomain) =>
+      domains.some(
+        (domain) =>
+          bypassDomain === domain || bypassDomain.endsWith(`.${domain}`),
+      ),
+    );
+
+    if (installDomains.length === 0) {
+      throw new Error("INSTALL 模式至少需要保留一个分流域名。");
+    }
+
     const profileUuid = createUuid();
-    const dnsUuid = createUuid();
+    const normalDnsUuid = createUuid();
+    const installDnsUuid = createUuid();
     const identifierSuffix = profileUuid.toLowerCase();
-    const domainXml = domains
+    const normalDomainXml = domains
       .map((domain) => `                    <string>${escapeXml(domain)}</string>`)
       .join("\n");
+    const installDomainXml = installDomains
+      .map((domain) => `                    <string>${escapeXml(domain)}</string>`)
+      .join("\n");
+    const bypassDomainXml = normalBypassDomains
+      .map((domain) => `                            <string>${escapeXml(domain)}</string>`)
+      .join("\n");
+    const normalOnDemandXml =
+      normalBypassDomains.length > 0
+        ? `            <key>OnDemandRules</key>
+            <array>
+                <dict>
+                    <key>Action</key>
+                    <string>EvaluateConnection</string>
+                    <key>ActionParameters</key>
+                    <array>
+                        <dict>
+                            <key>Domains</key>
+                            <array>
+${bypassDomainXml}
+                            </array>
+                            <key>DomainAction</key>
+                            <string>NeverConnect</string>
+                        </dict>
+                    </array>
+                </dict>
+                <dict>
+                    <key>Action</key>
+                    <string>Connect</string>
+                </dict>
+            </array>`
+        : `            <key>OnDemandRules</key>
+            <array>
+                <dict>
+                    <key>Action</key>
+                    <string>Connect</string>
+                </dict>
+            </array>`;
+    const escapedName = escapeXml(profileName);
+    const escapedOrganization = escapeXml(organization);
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -146,29 +221,68 @@
                 <string>${escapeXml(dohUrl)}</string>
                 <key>SupplementalMatchDomains</key>
                 <array>
-${domainXml}
+${normalDomainXml}
                 </array>
             </dict>
+${normalOnDemandXml}
+            <key>PayloadDescription</key>
+            <string>Normal mode: route the configured domains to the DoH server and bypass register.appattest.apple.com.</string>
             <key>PayloadDisplayName</key>
-            <string>${escapeXml(profileName)}</string>
+            <string>${escapedName} Normal</string>
             <key>PayloadIdentifier</key>
-            <string>com.local.doh-profile.${identifierSuffix}.dns</string>
+            <string>com.local.doh-profile.${identifierSuffix}.normal</string>
             <key>PayloadOrganization</key>
-            <string>Cloudflare</string>
+            <string>${escapedOrganization}</string>
             <key>PayloadType</key>
             <string>com.apple.dnsSettings.managed</string>
             <key>PayloadUUID</key>
-            <string>${dnsUuid}</string>
+            <string>${normalDnsUuid}</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+        <dict>
+            <key>DNSSettings</key>
+            <dict>
+                <key>DNSProtocol</key>
+                <string>HTTPS</string>
+                <key>ServerURL</key>
+                <string>${escapeXml(dohUrl)}</string>
+                <key>SupplementalMatchDomains</key>
+                <array>
+${installDomainXml}
+                </array>
+            </dict>
+            <key>OnDemandRules</key>
+            <array>
+                <dict>
+                    <key>Action</key>
+                    <string>Connect</string>
+                </dict>
+            </array>
+            <key>PayloadDescription</key>
+            <string>Install mode: certs.apple.com and ppq.apple.com use the system resolver.</string>
+            <key>PayloadDisplayName</key>
+            <string>${escapedName} Install</string>
+            <key>PayloadIdentifier</key>
+            <string>com.local.doh-profile.${identifierSuffix}.install</string>
+            <key>PayloadOrganization</key>
+            <string>${escapedOrganization}</string>
+            <key>PayloadType</key>
+            <string>com.apple.dnsSettings.managed</string>
+            <key>PayloadUUID</key>
+            <string>${installDnsUuid}</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
+    <key>PayloadDescription</key>
+    <string>Two-mode split DNS profile using one DNS-over-HTTPS endpoint.</string>
     <key>PayloadDisplayName</key>
-    <string>${escapeXml(profileName)}</string>
+    <string>${escapedName}</string>
     <key>PayloadIdentifier</key>
     <string>com.local.doh-profile.${identifierSuffix}</string>
     <key>PayloadOrganization</key>
-    <string>Cloudflare</string>
+    <string>${escapedOrganization}</string>
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
@@ -181,7 +295,10 @@ ${domainXml}
   }
 
   globalObject.ProfileGenerator = Object.freeze({
+    DEFAULT_ORGANIZATION,
     DEFAULT_DOMAINS,
+    INSTALL_ONLY_EXCLUDED_DOMAINS,
+    NORMAL_BYPASS_DOMAINS,
     buildProfile,
     normalizeDomains,
     normalizeDohUrl,
