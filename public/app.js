@@ -2,6 +2,7 @@
 
 const {
   DEFAULT_DOMAINS,
+  INSTALL_ONLY_EXCLUDED_DOMAINS,
   buildProfile,
   normalizeDomains,
   normalizeDohUrl,
@@ -17,6 +18,8 @@ const domainInput = document.querySelector("#domain-input");
 const domainError = document.querySelector("#domain-error");
 const clearButton = document.querySelector("#clear-url");
 const domainCount = document.querySelector("#domain-count");
+const normalCount = document.querySelector("#normal-count");
+const installCount = document.querySelector("#install-count");
 const restoreDomainsButton = document.querySelector("#restore-domains");
 const successPanel = document.querySelector("#success-panel");
 const successMessage = document.querySelector("#success-message");
@@ -59,7 +62,13 @@ function updateDomainCount() {
     .map((domain) => domain.trim().toLowerCase().replace(/\.$/, ""))
     .filter(Boolean);
   const uniqueCount = new Set(candidates).size;
+  const installDomainCount = [...new Set(candidates)].filter(
+    (domain) => !INSTALL_ONLY_EXCLUDED_DOMAINS.includes(domain),
+  ).length;
+
   domainCount.textContent = `${uniqueCount} 个域名`;
+  normalCount.textContent = `${uniqueCount} 个分流域名`;
+  installCount.textContent = `${installDomainCount} 个分流域名`;
 }
 
 function updateClearButton() {
@@ -105,10 +114,23 @@ form.addEventListener("submit", (event) => {
   domainInput.value = domains.join("\n");
   updateDomainCount();
   const filename = safeFilename(profileName);
-  const profile = buildProfile(dohUrl, profileName, domains);
+  let profile;
+
+  try {
+    profile = buildProfile(dohUrl, profileName, domains);
+  } catch (error) {
+    showError(domainInput, domainError, error.message);
+    return;
+  }
+
   downloadProfile(profile, filename);
 
-  successMessage.textContent = `${filename} 已开始下载，包含 ${domains.length} 个分流域名。`;
+  const installDomainCount = domains.filter(
+    (domain) => !INSTALL_ONLY_EXCLUDED_DOMAINS.includes(domain),
+  ).length;
+  successMessage.textContent =
+    `${filename} 已开始下载：Normal ${domains.length} 个域名，` +
+    `Install ${installDomainCount} 个域名。`;
   successPanel.hidden = false;
 });
 
